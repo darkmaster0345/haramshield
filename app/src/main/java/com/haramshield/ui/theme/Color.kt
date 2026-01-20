@@ -1,0 +1,96 @@
+package com.haramshield.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Primary Colors - Deep Islamic Green
+val Green10 = Color(0xFF001B0D)
+val Green20 = Color(0xFF00361A)
+val Green30 = Color(0xFF005227)
+val Green40 = Color(0xFF006D35)
+val Green50 = Color(0xFF008A43)
+val Green60 = Color(0xFF1FA857)
+val Green70 = Color(0xFF4DC47B)
+val Green80 = Color(0xFF7BE0A0)
+val Green90 = Color(0xFFA8FCC6)
+val Green95 = Color(0xFFD4FFE3)
+val Green99 = Color(0xFFF5FFF8)
+
+// Secondary Colors - Gold/Amber
+val Gold10 = Color(0xFF1F1B00)
+val Gold20 = Color(0xFF3F3500)
+val Gold30 = Color(0xFF5F5000)
+val Gold40 = Color(0xFF806B00)
+val Gold50 = Color(0xFFA08700)
+val Gold60 = Color(0xFFC1A300)
+val Gold70 = Color(0xFFE2BF1A)
+val Gold80 = Color(0xFFFFDC4E)
+val Gold90 = Color(0xFFFFEFAD)
+val Gold95 = Color(0xFFFFF8E7)
+val Gold99 = Color(0xFFFFFBFF)
+
+// Tertiary Colors - Teal
+val Teal10 = Color(0xFF001F24)
+val Teal20 = Color(0xFF00363D)
+val Teal30 = Color(0xFF004F58)
+val Teal40 = Color(0xFF006874)
+val Teal50 = Color(0xFF008391)
+val Teal60 = Color(0xFF009EAE)
+val Teal70 = Color(0xFF00BACC)
+val Teal80 = Color(0xFF4DD9E9)
+val Teal90 = Color(0xFF9FF0FB)
+val Teal95 = Color(0xFFCFF8FC)
+val Teal99 = Color(0xFFF5FEFF)
+
+// Error Colors
+val Error10 = Color(0xFF410002)
+val Error20 = Color(0xFF690005)
+val Error30 = Color(0xFF93000A)
+val Error40 = Color(0xFFBA1A1A)
+val Error50 = Color(0xFFDE3730)
+val Error60 = Color(0xFFFF5449)
+val Error70 = Color(0xFFFF897D)
+val Error80 = Color(0xFFFFB4AB)
+val Error90 = Color(0xFFFFDAD6)
+val Error95 = Color(0xFFFFEDEA)
+val Error99 = Color(0xFFFFFBFF)
+
+// Neutral Colors
+val Neutral10 = Color(0xFF191C19)
+val Neutral20 = Color(0xFF2E312E)
+val Neutral30 = Color(0xFF444744)
+val Neutral40 = Color(0xFF5C5F5C)
+val Neutral50 = Color(0xFF757874)
+val Neutral60 = Color(0xFF8E918D)
+val Neutral70 = Color(0xFFA9ACA8)
+val Neutral80 = Color(0xFFC5C8C3)
+val Neutral90 = Color(0xFFE1E3DE)
+val Neutral95 = Color(0xFFEFF2EC)
+val Neutral99 = Color(0xFFFBFDF7)
+
+// Neutral Variant Colors
+val NeutralVariant10 = Color(0xFF171D17)
+val NeutralVariant20 = Color(0xFF2B322B)
+val NeutralVariant30 = Color(0xFF414941)
+val NeutralVariant40 = Color(0xFF596058)
+val NeutralVariant50 = Color(0xFF717970)
+val NeutralVariant60 = Color(0xFF8B938A)
+val NeutralVariant70 = Color(0xFFA5ADA4)
+val NeutralVariant80 = Color(0xFFC1C9BF)
+val NeutralVariant90 = Color(0xFFDDE5DB)
+val NeutralVariant95 = Color(0xFFEBF3E9)
+val NeutralVariant99 = Color(0xFFF8FFF5)
+
+// Status Colors
+val StatusProtected = Color(0xFF4CAF50)
+val StatusWarning = Color(0xFFFF9800)
+val StatusDanger = Color(0xFFF44336)
+val StatusLocked = Color(0xFF9E9E9E)
+
+// New UI Design Colors - Cyber Stealth (Version 4)
+val ShieldCyberBlack = Color(0xFF0B0E14)
+val ShieldCyberGray = Color(0xFF161A22)
+val ShieldCyberLightGray = Color(0xFF242933)
+val ShieldNeonGreen = Color(0xFF00FF88)
+val ShieldNeonGreenDim = Color(0xFF004D2C)
+val ShieldTextDim = Color(0xFF70757E)
+val ShieldWhite = Color(0xFFFFFFFF)
