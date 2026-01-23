@@ -20,7 +20,7 @@ securityCrypto = "1.1.0-alpha06"
 navigationCompose = "2.8.5"
 ksp = "2.0.21-1.0.28"
 coroutines = "1.9.0"
-mlkitText = "19.0.0"
+mlkitTextBundled = "16.0.1"
 
 [libraries]
 # Core Android
@@ -76,8 +76,8 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 # Logging
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
-# ML Kit
-play-services-mlkit-text-recognition = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition", version.ref = "mlkitText" }
+# ML Kit (Bundled - no Google Play Services required)
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextBundled" }
 
 # Testing
 junit = { group = "junit", name = "junit", version = "4.13.2" }

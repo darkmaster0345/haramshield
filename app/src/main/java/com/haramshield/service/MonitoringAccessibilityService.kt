@@ -19,6 +19,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -32,8 +33,8 @@ class MonitoringAccessibilityService : AccessibilityService() {
     
     private var currentPackage: String? = null
     private var lastEventTime: Long = 0
-    private var isMonitoringEnabled = false
-    private var whitelistedPackages = setOf<String>()
+    private val isMonitoringEnabled = AtomicBoolean(false)
+    @Volatile private var whitelistedPackages = setOf<String>()
     
     // Anti-Cheat: Detect if user is trying to kill service settings
     private val SETTINGS_PACKAGE = "com.android.settings"
@@ -93,10 +94,9 @@ class MonitoringAccessibilityService : AccessibilityService() {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         
-        // Observe settings
         serviceScope.launch {
             settingsManager.monitoringEnabled.collect { enabled ->
-                isMonitoringEnabled = enabled
+                isMonitoringEnabled.set(enabled)
                 Timber.d("Monitoring enabled: $enabled")
             }
         }
@@ -158,7 +158,7 @@ class MonitoringAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !isMonitoringEnabled) return
+        if (event == null || !isMonitoringEnabled.get()) return
         
         // SNOOZE CHECK: If snoozed, bypass all logic
         if (isSnoozed) return

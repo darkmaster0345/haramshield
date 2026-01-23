@@ -34,6 +34,7 @@ import com.haramshield.Constants
 import com.haramshield.R
 import com.haramshield.ui.theme.HaramShieldTheme
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint
@@ -85,7 +86,7 @@ fun LockoutScreen(
     category: String,
     onGoHome: () -> Unit
 ) {
-    var remainingTimeMs by remember { mutableStateOf(initialTimeMs) }
+    var remainingTimeMs by remember { mutableLongStateOf(initialTimeMs) }
 
     // Countdown timer
     LaunchedEffect(initialTimeMs) {
@@ -102,7 +103,7 @@ fun LockoutScreen(
 
     val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingTimeMs)
     val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingTimeMs) % 60
-    val timeString = String.format("%02d:%02d", minutes, seconds)
+    val timeString = String.format(Locale.US, "%02d:%02d", minutes, seconds)
 
     Box(
         modifier = Modifier

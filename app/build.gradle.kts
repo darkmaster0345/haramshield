@@ -119,6 +119,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    // ML Kit
-    implementation(libs.play.services.mlkit.text.recognition)
+    // ML Kit (Bundled)
+    implementation(libs.mlkit.text.recognition)
 }

@@ -92,6 +92,12 @@ class SecurityUtils @Inject constructor() {
      * Prevents tampered APKs from running.
      */
     fun verifyAppSignature(context: Context): Boolean {
+        // Skip verification in debug builds to allow development
+        if (com.haramshield.BuildConfig.DEBUG) {
+            Timber.d("Debug build - skipping signature verification")
+            return true
+        }
+        
         try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 context.packageManager.getPackageInfo(

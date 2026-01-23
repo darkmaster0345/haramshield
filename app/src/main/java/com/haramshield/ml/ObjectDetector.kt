@@ -81,7 +81,10 @@ class ObjectDetector @Inject constructor(
             setupDetector()
         }
 
-        val localDetector = detector ?: return@withContext emptyList()
+        val localDetector = detector ?: run {
+            Timber.w("ObjectDetector is not initialized. Skipping detection.")
+            return@withContext emptyList()
+        }
 
         try {
             // Task Library expects TensorImage

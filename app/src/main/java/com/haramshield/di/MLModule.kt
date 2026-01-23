@@ -40,6 +40,12 @@ object MLModule {
     
     @Provides
     @Singleton
+    fun provideClassifier(@ApplicationContext context: Context): com.haramshield.ml.Classifier {
+        return com.haramshield.ml.Classifier(context)
+    }
+
+    @Provides
+    @Singleton
     fun provideObjectDetector(
         @ApplicationContext context: Context,
         imagePreprocessor: ImagePreprocessor

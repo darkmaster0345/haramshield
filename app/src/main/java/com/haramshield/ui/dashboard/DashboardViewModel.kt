@@ -33,7 +33,10 @@ data class DashboardUiState(
     ),
     val nsfwLockoutTime: String = "10m",
     val healthLockoutTime: String = "1m",
-    val regretTimerDuration: Int = 60 // Default 60s
+    val regretTimerDuration: Int = 60, // Default 60s
+    val isSnoozed: Boolean = false,
+    val snoozeUntil: Long = 0L,
+    val snoozeRemainingSeconds: Int = 0
 )
 
 @HiltViewModel
@@ -73,28 +76,43 @@ class DashboardViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            // Collect core stats
             combine(
-                settingsManager.monitoringEnabled,
-                settingsManager.tamperAttemptCount,
-                settingsManager.firstInstallTime,
-                logFlow
-            ) { enabled, tamperCount, installTime, logs ->
+                settingsManager.monitoringEnabled, 
+                settingsManager.tamperAttemptCount, 
+                settingsManager.firstInstallTime, 
+                repository.getTotalViolationCountFlow(), 
+                repository.getWhitelistCountFlow()
+            ) { enabled: Boolean, tamperCount: Int, installTime: Long, violationCount: Int, whitelistCount: Int ->
                 val days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - installTime).toInt()
-                
-                // Auto-Hardening Logic
                 val dynamicTimer = if (tamperCount >= 3) 300 else 60
-                
                 DashboardUiState(
                     isProtectionActive = enabled,
-                    appsMonitored = 0,
-                    violationsBlocked = 0, // Need to pipe this effectively if valuable
+                    appsMonitored = whitelistCount,
+                    violationsBlocked = violationCount,
                     daysProtected = maxOf(0, days),
                     isLoading = false,
-                    neuralFeedLogs = logs,
                     regretTimerDuration = dynamicTimer
                 )
-            }.collectLatest { state ->
-                _uiState.value = state
+            }.collectLatest { baseState ->
+                // Collect additional settings separately to avoid complex type inference
+                val isSnoozed = settingsManager.isSnoozed.first()
+                val nsfwTime = settingsManager.nsfwLockoutTime.first()
+                val healthTime = settingsManager.healthLockoutTime.first()
+                
+                _uiState.value = baseState.copy(
+                    isSnoozed = isSnoozed,
+                    nsfwLockoutTime = nsfwTime,
+                    healthLockoutTime = healthTime,
+                    neuralFeedLogs = techLogs.shuffled().take(6)
+                )
+            }
+        }
+        
+        // Separate coroutine for log rotation
+        viewModelScope.launch {
+            logFlow.collectLatest { logs ->
+                _uiState.update { it.copy(neuralFeedLogs = logs) }
             }
         }
     }
@@ -107,10 +125,16 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
-    fun snoozeProtection() {
-        val intent = Intent(Constants.ACTION_SNOOZE)
-        intent.setPackage(Constants.PACKAGE_NAME)
-        context.sendBroadcast(intent)
+    fun snoozeProtection(durationMinutes: Int = 5) {
+        viewModelScope.launch {
+            val snoozeEnd = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
+            settingsManager.setSnoozeUntil(snoozeEnd)
+            settingsManager.setIsSnoozed(true)
+            
+            // Auto-clear snooze when time expires
+            kotlinx.coroutines.delay(durationMinutes * 60 * 1000L)
+            settingsManager.clearSnooze()
+        }
     }
     
     fun deactivateShield() {
@@ -120,6 +144,18 @@ class DashboardViewModel @Inject constructor(
         context.sendBroadcast(intent)
     }
     
+    fun setNsfwLockoutTime(time: String) {
+        viewModelScope.launch {
+            settingsManager.setNsfwLockoutTime(time)
+        }
+    }
+
+    fun setHealthLockoutTime(time: String) {
+        viewModelScope.launch {
+            settingsManager.setHealthLockoutTime(time)
+        }
+    }
+
     fun refreshStats() {
         // Flow updates automatically
     }

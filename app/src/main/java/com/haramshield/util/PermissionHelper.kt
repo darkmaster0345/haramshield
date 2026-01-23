@@ -150,6 +150,37 @@ class PermissionHelper @Inject constructor(
         }
     }
     
+    // ==================== Media Projection ====================
+    
+    /**
+     * Get intent to request media projection (screen capture) permission.
+     * This must be launched with startActivityForResult to get the permission token.
+     */
+    fun getMediaProjectionIntent(): Intent {
+        val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+        return projectionManager.createScreenCaptureIntent()
+    }
+
+    // ==================== Battery Optimization ====================
+
+    /**
+     * Check if battery optimization is ignored (exemption granted)
+     */
+    fun isIgnoringBatteryOptimizations(): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    /**
+     * Get intent to request exemption from battery optimization
+     */
+    fun getBatteryOptimizationIntent(): Intent {
+        return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+    
     // ==================== All Permissions Check ====================
     
     /**

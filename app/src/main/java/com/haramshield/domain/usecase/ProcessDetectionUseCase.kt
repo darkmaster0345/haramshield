@@ -57,8 +57,8 @@ class ProcessDetectionUseCase @Inject constructor(
             com.haramshield.domain.model.ContentCategory.SCREEN_BLOCKED -> 10L
             com.haramshield.domain.model.ContentCategory.ALCOHOL,
             com.haramshield.domain.model.ContentCategory.TOBACCO -> 1L
-            // Default fallthrough to settings or safe default
-            else -> settingsManager.lockoutDurationMinutes.first()
+            // Default fallthrough for DIET/UNKNOWN - use safe default
+            else -> 5L
         }
         
         val lockUntil = System.currentTimeMillis() + (lockoutMinutes * 60 * 1000)

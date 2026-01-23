@@ -55,10 +55,14 @@ class SettingsManager @Inject constructor(
     
     // ==================== Lockout Settings ====================
     
-    val lockoutDurationMinutes: Flow<Long> = dataStore.data
+    val nsfwLockoutTime: Flow<String> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { it[Keys.LOCKOUT_DURATION_MINUTES] ?: Constants.DEFAULT_LOCKOUT_DURATION_MINUTES }
+        .map { it[Keys.NSFW_LOCKOUT_TIME] ?: "10m" }
     
+    val healthLockoutTime: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[Keys.HEALTH_LOCKOUT_TIME] ?: "1m" }
+
     // ==================== Screenshot Interval ====================
     
     val screenshotIntervalMs: Flow<Long> = dataStore.data
@@ -75,6 +79,10 @@ class SettingsManager @Inject constructor(
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[Keys.MONITORING_ENABLED] ?: false }
     
+    val isSnoozed: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[Keys.IS_SNOOZED] ?: false }
+
     val firstInstallTime: Flow<Long> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[Keys.FIRST_INSTALL_TIME] ?: System.currentTimeMillis() }
@@ -114,12 +122,13 @@ class SettingsManager @Inject constructor(
             Constants.MAX_DETECTION_THRESHOLD
         ) }
     }
-    
-    suspend fun setLockoutDurationMinutes(minutes: Long) {
-        dataStore.edit { it[Keys.LOCKOUT_DURATION_MINUTES] = minutes.coerceIn(
-            Constants.MIN_LOCKOUT_DURATION_MINUTES,
-            Constants.MAX_LOCKOUT_DURATION_MINUTES
-        ) }
+
+    suspend fun setNsfwLockoutTime(time: String) {
+        dataStore.edit { it[Keys.NSFW_LOCKOUT_TIME] = time }
+    }
+
+    suspend fun setHealthLockoutTime(time: String) {
+        dataStore.edit { it[Keys.HEALTH_LOCKOUT_TIME] = time }
     }
     
     suspend fun setScreenshotIntervalMs(intervalMs: Long) {
@@ -135,6 +144,27 @@ class SettingsManager @Inject constructor(
     
     suspend fun setMonitoringEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.MONITORING_ENABLED] = enabled }
+    }
+
+    suspend fun setIsSnoozed(snoozed: Boolean) {
+        dataStore.edit { it[Keys.IS_SNOOZED] = snoozed }
+    }
+    
+    // ==================== Snooze Timestamp ====================
+    
+    val snoozeUntil: Flow<Long> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[Keys.SNOOZE_UNTIL] ?: 0L }
+    
+    suspend fun setSnoozeUntil(timestamp: Long) {
+        dataStore.edit { it[Keys.SNOOZE_UNTIL] = timestamp }
+    }
+    
+    suspend fun clearSnooze() {
+        dataStore.edit { 
+            it[Keys.IS_SNOOZED] = false
+            it[Keys.SNOOZE_UNTIL] = 0L
+        }
     }
     
     suspend fun setFirstInstallTime(time: Long) {
@@ -159,10 +189,13 @@ class SettingsManager @Inject constructor(
         val GAMBLING_ENABLED = booleanPreferencesKey("gambling_enabled")
         val NSFW_THRESHOLD = floatPreferencesKey("nsfw_threshold")
         val OBJECT_THRESHOLD = floatPreferencesKey("object_threshold")
-        val LOCKOUT_DURATION_MINUTES = longPreferencesKey("lockout_duration_minutes")
+        val NSFW_LOCKOUT_TIME = stringPreferencesKey("nsfw_lockout_time")
+        val HEALTH_LOCKOUT_TIME = stringPreferencesKey("health_lockout_time")
         val SCREENSHOT_INTERVAL_MS = longPreferencesKey("screenshot_interval_ms")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val MONITORING_ENABLED = booleanPreferencesKey("monitoring_enabled")
+        val IS_SNOOZED = booleanPreferencesKey("is_snoozed")
+        val SNOOZE_UNTIL = longPreferencesKey("snooze_until")
         val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time")
         val TAMPER_ATTEMPT_COUNT = intPreferencesKey("tamper_attempt_count")
         val CUSTOM_BLOCKED_WORDS = stringSetPreferencesKey("custom_blocked_words")

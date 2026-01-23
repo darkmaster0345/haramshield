@@ -29,9 +29,11 @@ import com.haramshield.data.preferences.SettingsManager
 import com.haramshield.domain.model.DetectionSummary
 import com.haramshield.domain.usecase.ProcessDetectionUseCase
 import com.haramshield.domain.usecase.ProcessingResult
+import com.haramshield.ml.Classifier
+import com.haramshield.ml.HaramType
 import com.haramshield.ml.GamblingDetector
-import com.haramshield.ml.NSFWDetector
-import com.haramshield.ml.ObjectDetector
+// import com.haramshield.ml.NSFWDetector // Replaced by Classifier
+// import com.haramshield.ml.ObjectDetector // Replaced by Classifier (partially)
 import com.haramshield.ui.MainActivity
 import com.haramshield.ui.lockout.LockoutActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,8 +52,12 @@ import javax.inject.Inject
 class ScreenCaptureService : Service() {
     
     @Inject lateinit var settingsManager: SettingsManager
-    @Inject lateinit var nsfwDetector: NSFWDetector
-    @Inject lateinit var objectDetector: ObjectDetector
+    @Inject lateinit var classifier: Classifier // The new HaramShield Core
+    // @Inject lateinit var nsfwDetector: NSFWDetector
+    // @Inject lateinit var objectDetector: ObjectDetector // TODO: Check if still needed for other objects?
+                                                        // For now assuming Classifier covers 
+                                                        // NSFW, Alcohol, Pork. 
+                                                        // Keeping logical structure if we want to add back specific object detector later.
     @Inject lateinit var gamblingDetector: GamblingDetector
     @Inject lateinit var textDetector: com.haramshield.ml.TextDetector
     @Inject lateinit var processDetectionUseCase: ProcessDetectionUseCase
@@ -62,7 +68,37 @@ class ScreenCaptureService : Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private var mediaProjection: MediaProjection? = null
+    private var isMediaProjectionInitialized = false
     private lateinit var captureReceiver: BroadcastReceiver
+    
+    override fun onCreate() {
+        super.onCreate()
+        Timber.d("ScreenCaptureService created")
+        
+        // Initialize broadcast receiver for capture commands from AccessibilityService
+        captureReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    MonitoringAccessibilityService.ACTION_START_CAPTURE -> {
+                        val packageName = intent.getStringExtra(Constants.EXTRA_PACKAGE_NAME)
+                        currentPackage = packageName
+                        Timber.d("Received capture request for: $packageName")
+                        if (isMediaProjectionInitialized && (captureJob == null || !captureJob!!.isActive)) {
+                            startCapturing()
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Register the receiver
+        val filter = IntentFilter(MonitoringAccessibilityService.ACTION_START_CAPTURE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(captureReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(captureReceiver, filter)
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
@@ -74,10 +110,20 @@ class ScreenCaptureService : Service() {
         )
         
         when (action) {
+            ACTION_INIT_PROJECTION -> {
+                // Initialize MediaProjection from permission result
+                val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1)
+                val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+                if (resultCode != -1 && resultData != null) {
+                    initializeMediaProjection(resultCode, resultData)
+                } else {
+                    Timber.e("Failed to get MediaProjection result data")
+                }
+            }
             MonitoringAccessibilityService.ACTION_START_CAPTURE -> {
                 val packageName = intent.getStringExtra(Constants.EXTRA_PACKAGE_NAME)
                 currentPackage = packageName
-                if (captureJob == null || !captureJob!!.isActive) {
+                if (isMediaProjectionInitialized && (captureJob == null || !captureJob!!.isActive)) {
                     startCapturing()
                 }
             }
@@ -89,6 +135,56 @@ class ScreenCaptureService : Service() {
         
         // GHOST SERVICE FIX: Restart if killed
         return START_STICKY
+    }
+    
+    /**
+     * Initialize MediaProjection from permission grant result.
+     * Must be called after user grants screen capture permission.
+     */
+    private fun initializeMediaProjection(resultCode: Int, data: Intent) {
+        try {
+            val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            mediaProjection = projectionManager.getMediaProjection(resultCode, data)
+            
+            if (mediaProjection != null) {
+                setupVirtualDisplay()
+                isMediaProjectionInitialized = true
+                Timber.d("MediaProjection initialized successfully")
+            } else {
+                Timber.e("MediaProjection is null after initialization")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize MediaProjection")
+        }
+    }
+    
+    /**
+     * Set up VirtualDisplay for screen capture.
+     */
+    private fun setupVirtualDisplay() {
+        val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getMetrics(metrics)
+        
+        val width = metrics.widthPixels
+        val height = metrics.heightPixels
+        val density = metrics.densityDpi
+        
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        
+        virtualDisplay = mediaProjection?.createVirtualDisplay(
+            "HaramShield_Screen",
+            width,
+            height,
+            density,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            imageReader?.surface,
+            null,
+            Handler(Looper.getMainLooper())
+        )
+        
+        Timber.d("VirtualDisplay created: ${width}x${height} @ ${density}dpi")
     }
 
     private fun createNotification(): Notification {
@@ -136,7 +232,7 @@ class ScreenCaptureService : Service() {
             
             // Start with empty results
             val allResults = mutableListOf<com.haramshield.domain.model.DetectionResult>()
-            var isNsfwViolation = false
+            var isMainViolation = false
             
             // CHECK FOR BLACK SCREEN (Incognito / Secure Window)
             if (isBitmapBlackOrTransparent(bitmap)) {
@@ -152,18 +248,35 @@ class ScreenCaptureService : Service() {
                 // Only run expensive ML if we can actually see the screen
                 
                 // Run detections
-                // Nudity & Object: Run EVERY frame (400ms)
-                val nsfwResult = nsfwDetector.detect(bitmap)
-                isNsfwViolation = nsfwResult.isViolation
-                val objectResults = objectDetector.detect(bitmap)
+                // Haram Core: Run EVERY frame (400ms)
+                val haramType = classifier.checkScreen(bitmap)
+                
+                if (haramType != HaramType.SAFE) {
+                    isMainViolation = true
+                    Timber.d("HaramShield Core Violation: $haramType")
+                    
+                    val category = when(haramType) {
+                        HaramType.NSFW -> com.haramshield.domain.model.ContentCategory.NSFW
+                        HaramType.ALCOHOL -> com.haramshield.domain.model.ContentCategory.ALCOHOL
+                        HaramType.PORK -> com.haramshield.domain.model.ContentCategory.DIET
+                        HaramType.SAFE -> com.haramshield.domain.model.ContentCategory.UNKNOWN // Should not happen
+                    }
+                    
+                    allResults.add(com.haramshield.domain.model.DetectionResult(
+                        category = category,
+                        confidence = 0.90f, // > 0.85 threshold logic is inside Classifier
+                        isViolation = true,
+                        label = "Detected ${haramType.name}"
+                    ))
+                }
+
+                // Gambling:
                 val gamblingResult = gamblingDetector.detect(bitmap)
                 
                 // Text/OCR: Run EVERY frame (Optimization Removed for Robustness)
                 // User requested "Every frame" for strictness
                 val textResult = textDetector.detectProhibitedText(bitmap)
                 
-                allResults.add(nsfwResult)
-                allResults.addAll(objectResults)
                 allResults.add(gamblingResult)
                 allResults.add(textResult)
             }
@@ -173,12 +286,12 @@ class ScreenCaptureService : Service() {
             if (summary.hasViolation) {
                 Timber.w("Violation detected in $packageName: ${summary.highestConfidenceViolation}")
                 
-                // CRITICAL RULE 1: If NSFW or Text Violation, trigger Global Home immediately
+                // CRITICAL RULE 1: If Haram Violation, trigger Global Home immediately
                 // The "Kick" Command
-                if (isNsfwViolation || (summary.highestConfidenceViolation?.confidence ?: 0f) >= 0.99f) {
+                if (isMainViolation || (summary.highestConfidenceViolation?.confidence ?: 0f) >= 0.99f) {
                     Timber.w("CRITICAL: Violation detected, forcing HOME action immediately.")
                     val homeIntent = Intent(MonitoringAccessibilityService.ACTION_PERFORM_GLOBAL_HOME)
-                    homeIntent.setPackage(packageName) // Send to our own app
+                    homeIntent.setPackage(Constants.PACKAGE_NAME) // Send to our own app
                     sendBroadcast(homeIntent)
                 }
                 
@@ -239,7 +352,7 @@ class ScreenCaptureService : Service() {
                 
                 // THE NOOR PULSE: Broadcast scan event for UI visual
                 val pulseIntent = Intent(Constants.ACTION_NOOR_PULSE)
-                pulseIntent.setPackage(packageName)
+                pulseIntent.setPackage(Constants.PACKAGE_NAME)
                 sendBroadcast(pulseIntent)
                 
                 if (currentPackage != null) {
@@ -304,6 +417,7 @@ class ScreenCaptureService : Service() {
     }
 
     companion object {
+        const val ACTION_INIT_PROJECTION = "com.haramshield.INIT_PROJECTION"
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
     }

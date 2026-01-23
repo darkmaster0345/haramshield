@@ -123,12 +123,14 @@ fun PinSetupScreen(
             
             Button(
                 onClick = {
-                    if (viewModel.setPin(pin, confirmPin, oldPin)) {
-                        Toast.makeText(context, "PIN updated successfully", Toast.LENGTH_SHORT).show()
-                        onNavigateBack()
-                    } else {
+                    if (!viewModel.setPin(pin, confirmPin, oldPin)) {
                         Toast.makeText(context, "Invalid PIN or mismatch", Toast.LENGTH_SHORT).show()
+                        return@Button
                     }
+                    
+                    Toast.makeText(context, "PIN updated successfully", Toast.LENGTH_SHORT).show()
+                    onNavigateBack()
+
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = pin.length >= 4 && pin == confirmPin

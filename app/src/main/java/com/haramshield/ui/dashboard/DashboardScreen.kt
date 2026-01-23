@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,31 +103,56 @@ fun DashboardScreen(
                     )
                 }
 
-                // Status Badge
-                Surface(
-                    color = cyberGray,
-                    shape = RoundedCornerShape(50),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, neonGreenDim)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(if (uiState.isProtectionActive) neonGreen else Color.Gray)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (uiState.isProtectionActive) "SHIELD ACTIVE" else "PAUSED",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (uiState.isProtectionActive) neonGreen else Color.Gray,
-                            fontWeight = FontWeight.Bold
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Settings Button
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = textDim,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    // Status Badge
+                    Surface(
+                        color = cyberGray,
+                        shape = RoundedCornerShape(50),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, neonGreenDim)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (uiState.isProtectionActive) neonGreen else Color.Gray)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (uiState.isProtectionActive) "SHIELD ACTIVE" else "PAUSED",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (uiState.isProtectionActive) neonGreen else Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatCard(label = "Violations Blocked", value = uiState.violationsBlocked)
+                StatCard(label = "Apps Monitored", value = uiState.appsMonitored)
+                StatCard(label = "Days Protected", value = uiState.daysProtected)
             }
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -146,7 +173,7 @@ fun DashboardScreen(
                         repeatMode = RepeatMode.Reverse
                     ), label = "pulse_alpha"
                 )
-                
+
                 Box(
                     modifier = Modifier
                         .size(260.dp)
@@ -221,14 +248,24 @@ fun DashboardScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, cyberGray)
             ) {
                 val scrollState = rememberScrollState()
+                LaunchedEffect(uiState.neuralFeedLogs) {
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
                 Column(
                     modifier = Modifier
                         .padding(12.dp)
                         .verticalScroll(scrollState)
                 ) {
                     uiState.neuralFeedLogs.forEach { log ->
+                        var displayedText by remember { mutableStateOf("") }
+                        LaunchedEffect(log) {
+                            log.forEachIndexed { index, _ ->
+                                displayedText = log.substring(0, index + 1)
+                                delay(10)
+                            }
+                        }
                         Text(
-                            text = log,
+                            text = displayedText,
                             style = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
                             color = neonGreen.copy(alpha = 0.8f),
                             fontSize = 11.sp,
@@ -240,15 +277,28 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 4. PAUSE PROTECTION BOX (EXACT PLACEMENT)
+            // 4. PAUSE PROTECTION BOX (with Snooze Duration Dialog)
+            val isSnoozed = uiState.isSnoozed
+            var showSnoozeDialog by remember { mutableStateOf(false) }
+            
+            // Calculate remaining time
+            val snoozeRemainingText = if (isSnoozed && uiState.snoozeUntil > 0) {
+                val remaining = (uiState.snoozeUntil - System.currentTimeMillis()) / 1000
+                if (remaining > 0) {
+                    val mins = remaining / 60
+                    val secs = remaining % 60
+                    "Resumes in ${mins}m ${secs}s"
+                } else "Active"
+            } else "Temporary bypass"
+            
             Button(
-                onClick = { viewModel.snoozeProtection() },
+                onClick = { if (!isSnoozed) showSnoozeDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(72.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = cyberGray),
-                border = androidx.compose.foundation.BorderStroke(1.dp, cyberGray.copy(alpha = 0.5f))
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSnoozed) neonGreen.copy(alpha = 0.2f) else cyberGray),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSnoozed) neonGreen else cyberGray.copy(alpha = 0.5f))
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -262,27 +312,38 @@ fun DashboardScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.History,
+                            imageVector = if (isSnoozed) Icons.Default.Timer else Icons.Default.History,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = if (isSnoozed) neonGreen else Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Pause Protection (15s)",
-                            color = Color.White,
+                            text = if (isSnoozed) "Protection Paused" else "Pause Protection",
+                            color = if (isSnoozed) neonGreen else Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Text(
-                            text = "Temporary bypass",
+                            text = snoozeRemainingText,
                             color = textDim,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
+            }
+            
+            // Snooze Duration Dialog
+            if (showSnoozeDialog) {
+                SnoozeDurationDialog(
+                    onDismiss = { showSnoozeDialog = false },
+                    onDurationSelected = { minutes ->
+                        viewModel.snoozeProtection(minutes)
+                        showSnoozeDialog = false
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -315,7 +376,8 @@ fun DashboardScreen(
                 subtitle = "Neural detection active",
                 duration = uiState.nsfwLockoutTime,
                 icon = Icons.Default.Shield,
-                isActive = uiState.isProtectionActive
+                isActive = uiState.isProtectionActive,
+                onDurationSelected = { viewModel.setNsfwLockoutTime(it) }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -326,7 +388,8 @@ fun DashboardScreen(
                 subtitle = "Object recognition active",
                 duration = uiState.healthLockoutTime,
                 icon = Icons.Default.History,
-                isActive = uiState.isProtectionActive
+                isActive = uiState.isProtectionActive,
+                onDurationSelected = { viewModel.setHealthLockoutTime(it) }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -400,8 +463,12 @@ fun CategoryCyberItem(
     subtitle: String,
     duration: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isActive: Boolean
+    isActive: Boolean,
+    onDurationSelected: (String) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    val lockoutTimes = listOf("1m", "5m", "10m", "15m", "30m", "1h")
+
     Surface(
         color = com.haramshield.ui.theme.ShieldCyberGray,
         shape = RoundedCornerShape(16.dp),
@@ -437,17 +504,34 @@ fun CategoryCyberItem(
             }
 
             // Duration indicator (Tied to dynamic lockouts)
-            Surface(
-                color = com.haramshield.ui.theme.ShieldCyberLightGray,
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    text = duration,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
+            Box {
+                Surface(
+                    color = com.haramshield.ui.theme.ShieldCyberLightGray,
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.clickable { expanded = true }
+                ) {
+                    Text(
+                        text = duration,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    lockoutTimes.forEach { time ->
+                        DropdownMenuItem(
+                            text = { Text(time) },
+                            onClick = {
+                                onDurationSelected(time)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -507,6 +591,82 @@ fun InfiniteRotatingOctagon(color: Color, pulseAlpha: Float) {
         )
     }
 }
+
+@Composable
+fun SnoozeDurationDialog(
+    onDismiss: () -> Unit,
+    onDurationSelected: (Int) -> Unit
+) {
+    val neonGreen = com.haramshield.ui.theme.ShieldNeonGreen
+    val cyberBlack = com.haramshield.ui.theme.ShieldCyberBlack
+    val cyberGray = com.haramshield.ui.theme.ShieldCyberGray
+    val textDim = com.haramshield.ui.theme.ShieldTextDim
+    
+    val durations = listOf(
+        5 to "5 minutes",
+        15 to "15 minutes",
+        30 to "30 minutes",
+        60 to "1 hour"
+    )
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = cyberGray,
+        title = {
+            Text(
+                text = "Pause Protection",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Select how long to pause protection:",
+                    color = textDim,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                durations.forEach { (minutes, label) ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onDurationSelected(minutes) },
+                        color = cyberBlack.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, neonGreen.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                tint = neonGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = label,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = textDim)
+            }
+        }
+    )
+}
+
 
 
 

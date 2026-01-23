@@ -4,6 +4,7 @@
     
     <!-- Accessibility Service -->
     <string name="accessibility_service_description">HaramShield monitors apps to detect prohibited content and protect you from harmful material. This service is required for the app to function properly.</string>
+    <string name="haramshield_service_description">HaramShield Brain - Captures screen to detect NSFW content and haram words using on-device AI. Required for content protection.</string>
     
     <!-- Dashboard -->
     <string name="dashboard_title">Dashboard</string>

@@ -72,11 +72,9 @@ class SettingsViewModel @Inject constructor(
             }
         }
         
-        viewModelScope.launch {
-            settingsManager.lockoutDurationMinutes.collectLatest { duration ->
-                _uiState.update { it.copy(lockoutDurationMinutes = duration) }
-            }
-        }
+        // lockoutDurationMinutes is now handled per-category in ProcessDetectionUseCase
+        // No need for a separate collector
+        
         
         // Check PIN state
         checkPinStatus()
@@ -107,9 +105,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsManager.setNsfwThreshold(value) }
     }
     
-    fun setLockoutDuration(minutes: Int) {
-        viewModelScope.launch { settingsManager.setLockoutDurationMinutes(minutes.toLong()) }
-    }
+    // Lockout duration is now per-category (NSFW vs Health) - see setNsfwLockoutTime/setHealthLockoutTime in DashboardViewModel
     
     fun setPin(newPin: String, confirmPin: String, oldPin: String): Boolean {
         if (newPin != confirmPin) return false

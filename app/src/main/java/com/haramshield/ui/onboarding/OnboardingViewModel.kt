@@ -17,7 +17,9 @@ data class OnboardingUiState(
     val isOverlayEnabled: Boolean = false,
     val isNotificationEnabled: Boolean = false,
     val isDeviceAdminActive: Boolean = false,
-    val isUsageStatsGranted: Boolean = false
+    val isUsageStatsGranted: Boolean = false,
+    val isScreenCaptureGranted: Boolean = false,
+    val isIgnoringBatteryOptimizations: Boolean = false
 )
 
 @HiltViewModel
@@ -37,8 +39,18 @@ class OnboardingViewModel @Inject constructor(
                 isOverlayEnabled = permissionHelper.canDrawOverlays(),
                 isNotificationEnabled = permissionHelper.areNotificationsEnabled(),
                 isDeviceAdminActive = permissionHelper.isDeviceAdminActive(),
-                isUsageStatsGranted = permissionHelper.hasUsageStatsPermission()
+                isUsageStatsGranted = permissionHelper.hasUsageStatsPermission(),
+                isIgnoringBatteryOptimizations = permissionHelper.isIgnoringBatteryOptimizations()
+                // Note: isScreenCaptureGranted is set manually via setScreenCaptureGranted
+                // because MediaProjection doesn't have a persistent check
             )
+        }
+    }
+    
+    // Set screen capture permission granted (called after successful MediaProjection request)
+    fun setScreenCaptureGranted(granted: Boolean) {
+        _uiState.update {
+            it.copy(isScreenCaptureGranted = granted)
         }
     }
     

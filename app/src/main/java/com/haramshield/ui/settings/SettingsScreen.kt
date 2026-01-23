@@ -133,6 +133,71 @@ fun SettingsScreen(
                 onClick = onNavigateToAbout
             )
             
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            
+            // Permissions Section
+            Text(
+                text = "Permissions",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(16.dp)
+            )
+            
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val permissionHelper = remember { com.haramshield.util.PermissionHelper(context) }
+            
+            // Force recomposition on resume
+            val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+            var refreshTrigger by remember { mutableIntStateOf(0) }
+            DisposableEffect(lifecycleOwner) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                        refreshTrigger++
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
+            
+            // Re-check permissions when refreshTrigger changes
+            val isAccessibilityEnabled = remember(refreshTrigger) { permissionHelper.isAccessibilityServiceEnabled() }
+            val isOverlayEnabled = remember(refreshTrigger) { permissionHelper.canDrawOverlays() }
+            val isNotificationEnabled = remember(refreshTrigger) { permissionHelper.areNotificationsEnabled() }
+            val isUsageStatsEnabled = remember(refreshTrigger) { permissionHelper.hasUsageStatsPermission() }
+            val isBatteryOptimized = remember(refreshTrigger) { permissionHelper.isIgnoringBatteryOptimizations() }
+            
+            PermissionStatusItem(
+                title = "Accessibility Service",
+                isGranted = isAccessibilityEnabled,
+                onGrant = { context.startActivity(permissionHelper.getAccessibilitySettingsIntent()) }
+            )
+            
+            PermissionStatusItem(
+                title = "Display Overlay",
+                isGranted = isOverlayEnabled,
+                onGrant = { context.startActivity(permissionHelper.getOverlaySettingsIntent()) }
+            )
+            
+            PermissionStatusItem(
+                title = "Notifications",
+                isGranted = isNotificationEnabled,
+                onGrant = { context.startActivity(permissionHelper.getNotificationSettingsIntent()) }
+            )
+            
+            PermissionStatusItem(
+                title = "Usage Stats",
+                isGranted = isUsageStatsEnabled,
+                onGrant = { context.startActivity(permissionHelper.getUsageStatsSettingsIntent()) }
+            )
+            
+            PermissionStatusItem(
+                title = "Battery Optimization",
+                isGranted = isBatteryOptimized,
+                onGrant = { context.startActivity(permissionHelper.getBatteryOptimizationIntent()) }
+            )
+            
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            
             // Blocked Words Management
             var showBlockedWordsDialog by remember { mutableStateOf(false) }
             
@@ -373,6 +438,37 @@ fun BlockedWordsDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Done")
+            }
+        }
+    )
+}
+
+@Composable
+private fun PermissionStatusItem(
+    title: String,
+    isGranted: Boolean,
+    onGrant: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(title) },
+        leadingContent = {
+            Icon(
+                imageVector = if (isGranted) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                contentDescription = null,
+                tint = if (isGranted) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+            )
+        },
+        trailingContent = {
+            if (!isGranted) {
+                TextButton(onClick = onGrant) {
+                    Text("Grant")
+                }
+            } else {
+                Text(
+                    "Granted",
+                    color = Color(0xFF4CAF50),
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     )

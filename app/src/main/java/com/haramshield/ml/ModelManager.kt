@@ -87,11 +87,14 @@ class ModelManager @Inject constructor(
     
     private fun loadModelFile(fileName: String): MappedByteBuffer {
         val fileDescriptor = context.assets.openFd("models/$fileName")
-        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
-        val fileChannel = inputStream.channel
-        val startOffset = fileDescriptor.startOffset
-        val declaredLength = fileDescriptor.declaredLength
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+        return FileInputStream(fileDescriptor.fileDescriptor).use { inputStream ->
+            val fileChannel = inputStream.channel
+            fileChannel.map(
+                FileChannel.MapMode.READ_ONLY,
+                fileDescriptor.startOffset,
+                fileDescriptor.declaredLength
+            )
+        }
     }
     
     fun getNsfwInterpreter(): Interpreter? = nsfwInterpreter

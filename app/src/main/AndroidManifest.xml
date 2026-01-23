@@ -53,6 +53,7 @@
         <service
             android:name=".service.MonitoringAccessibilityService"
             android:exported="false"
+            android:directBootAware="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -66,7 +67,21 @@
         <service
             android:name=".service.ScreenCaptureService"
             android:exported="false"
+            android:directBootAware="true"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- HaramShield Brain Service (Screenshot-based NSFW detection) -->
+        <service
+            android:name=".service.HaramShieldService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/haramshield_service_config" />
+        </service>
 
         <!-- Boot Receiver -->
         <receiver

@@ -8,7 +8,9 @@ enum class ContentCategory(val displayName: String) {
     ALCOHOL("Alcohol"),
     TOBACCO("Tobacco"),
     GAMBLING("Gambling"),
-    SCREEN_BLOCKED("Screen Blocked");
+    DIET("Dietary (Pork/Haram)"),
+    SCREEN_BLOCKED("Screen Blocked"),
+    UNKNOWN("Unknown");
     
     companion object {
         fun fromString(value: String): ContentCategory? {
