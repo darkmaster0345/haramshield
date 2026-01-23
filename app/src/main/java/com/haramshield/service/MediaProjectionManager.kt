@@ -2,9 +2,9 @@
 
 package com.haramshield.service
 
-import android.app.MediaProjection
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 
 class MediaProjectionManager {
@@ -12,11 +12,12 @@ class MediaProjectionManager {
     private var mediaProjection: MediaProjection? = null
 
     fun initialize(context: Context) {
-        mediaProjectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionManager =
+            context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
-    fun startProjection(intent: Intent) {
-        mediaProjection = mediaProjectionManager.getMediaProjection(ResultCode, intent)
+    fun startProjection(resultCode: Int, intent: Intent) {
+        mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, intent)
         // TODO: Handle projection start
     }
 
@@ -24,6 +25,6 @@ class MediaProjectionManager {
         mediaProjection?.stop()
         mediaProjection = null
     }
-    
+
     // Additional methods for lifecycle management can be added here.
 }

@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import androidx.core.content.ContextCompat
 import com.haramshield.Constants
 import com.haramshield.data.preferences.SettingsManager
 import com.haramshield.data.repository.AppRepository
@@ -85,11 +86,12 @@ class MonitoringAccessibilityService : AccessibilityService() {
             addAction(Constants.ACTION_DISABLE_SERVICE)
         }
         
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(controlReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(controlReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            controlReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         
         // Observe settings
         serviceScope.launch {
