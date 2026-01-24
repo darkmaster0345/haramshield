@@ -47,10 +47,7 @@ class MonitoringAccessibilityService : AccessibilityService() {
                     Timber.w("Received request to perform GLOBAL_ACTION_HOME")
                     performGlobalAction(GLOBAL_ACTION_HOME)
                 }
-                Constants.ACTION_SNOOZE -> {
-                    Timber.w("SNOOZE: Pausing protection for 15 seconds")
-                    snoozeShield(15000L)
-                }
+                // Note: ACTION_SNOOZE removed - snooze is now handled via DataStore sync
                 Constants.ACTION_DISABLE_SERVICE -> {
                     Timber.w("DISABLE: Deactivating Accessibility Service")
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
@@ -63,19 +60,8 @@ class MonitoringAccessibilityService : AccessibilityService() {
         }
     }
     
-    // Snooze State
-    private var isSnoozed = false
-    private val snoozeHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    
-    private fun snoozeShield(durationMs: Long) {
-        if (isSnoozed) return
-        
-        isSnoozed = true
-        snoozeHandler.postDelayed({
-            isSnoozed = false
-            Timber.d("SNOOZE EXPIRED: Protection active")
-        }, durationMs)
-    }
+    // Snooze State - synced with DataStore
+    @Volatile private var isSnoozed = false
     
     override fun onCreate() {
         super.onCreate()
@@ -83,7 +69,6 @@ class MonitoringAccessibilityService : AccessibilityService() {
         
         val filter = android.content.IntentFilter().apply {
             addAction(ACTION_PERFORM_GLOBAL_HOME)
-            addAction(Constants.ACTION_SNOOZE)
             addAction(Constants.ACTION_DISABLE_SERVICE)
         }
         
@@ -106,6 +91,14 @@ class MonitoringAccessibilityService : AccessibilityService() {
             repository.getWhitelistedPackageNamesFlow().collect { packages ->
                 whitelistedPackages = packages.toSet()
                 Timber.d("Whitelist updated: ${packages.size} apps")
+            }
+        }
+        
+        // Observe snooze state from DataStore (synced with UI pause button)
+        serviceScope.launch {
+            settingsManager.isSnoozed.collect { snoozed ->
+                isSnoozed = snoozed
+                Timber.d("Snooze state updated: $snoozed")
             }
         }
     }

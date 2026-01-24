@@ -70,7 +70,9 @@
             android:directBootAware="true"
             android:foregroundServiceType="mediaProjection" />
 
-        <!-- HaramShield Brain Service (Screenshot-based NSFW detection) -->
+        <!-- HaramShield Brain Service - DISABLED to avoid conflict with MonitoringAccessibilityService
+             Only ONE accessibility service can be enabled at a time.
+             MonitoringAccessibilityService + ScreenCaptureService is the preferred approach.
         <service
             android:name=".service.HaramShieldService"
             android:exported="false"
@@ -82,6 +84,7 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/haramshield_service_config" />
         </service>
+        -->
 
         <!-- Boot Receiver -->
         <receiver

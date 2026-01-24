@@ -96,22 +96,6 @@ fun SettingsScreen(
                 valueRange = 0.3f..0.95f
             )
             
-            // Lockout Duration
-            Text(
-                text = stringResource(R.string.lockout_duration),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
-            )
-            
-            SliderSettingsItem(
-                title = stringResource(R.string.minutes_format, uiState.lockoutDurationMinutes),
-                value = uiState.lockoutDurationMinutes.toFloat(),
-                onValueChange = { viewModel.setLockoutDuration(it.toInt()) },
-                valueRange = 5f..60f,
-                steps = 10
-            )
-            
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             // Other Settings

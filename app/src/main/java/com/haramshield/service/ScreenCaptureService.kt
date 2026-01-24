@@ -356,8 +356,14 @@ class ScreenCaptureService : Service() {
                 sendBroadcast(pulseIntent)
                 
                 if (currentPackage != null) {
-                    captureAndAnalyze(frameCount)
-                    frameCount++
+                    // SNOOZE CHECK: Skip detection if user paused protection
+                    val isSnoozed = settingsManager.isSnoozed.first()
+                    if (isSnoozed) {
+                        Timber.d("SNOOZED: Skipping detection")
+                    } else {
+                        captureAndAnalyze(frameCount)
+                        frameCount++
+                    }
                 }
             }
         }
